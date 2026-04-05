@@ -11,6 +11,8 @@
  * - AI insights (health score, recomandări)
  */
 
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-orange-50  ">
@@ -22,6 +24,22 @@ export default function Home() {
           <p className="text-xl text-gray-600  mb-8">
             Aplicație de gestiune financiară personală
           </p>
+
+          {/* Butoane autentificare */}
+          <div className="flex items-center justify-center gap-4 mb-10">
+            <Link
+              href="/login"
+              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              Autentifică-te
+            </Link>
+            <Link
+              href="/register"
+              className="bg-white hover:bg-gray-50 text-teal-600 font-medium px-6 py-3 rounded-lg border border-teal-500 transition-colors"
+            >
+              Creează cont
+            </Link>
+          </div>
 
           <div className="bg-white/80  backdrop-blur-sm rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-semibold mb-4 text-gray-900 ">
