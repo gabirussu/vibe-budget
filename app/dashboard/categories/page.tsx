@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import UserMenu from "@/app/dashboard/user-menu";
 
 // ─── Tipuri ───────────────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ function CategoryFormModal({ category, defaultType, onSave, onClose, saving, err
               value={name}
               onChange={(e) => { setName(e.target.value); setNameError(null); }}
               placeholder={type === "income" ? "ex: Salariu, Freelance..." : "ex: Mâncare, Transport..."}
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400 ${
                 nameError ? "border-red-400 bg-red-50" : "border-gray-300"
               }`}
               autoFocus
@@ -114,7 +115,7 @@ function CategoryFormModal({ category, defaultType, onSave, onClose, saving, err
               <button
                 type="button"
                 onClick={() => setShowPicker(!showPicker)}
-                className="w-12 h-12 text-2xl rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors flex items-center justify-center"
+                className="w-12 h-12 text-2xl rounded-xl border border-gray-200 hover:border-sage-300 hover:bg-sage-50 transition-colors flex items-center justify-center"
               >
                 {icon}
               </button>
@@ -131,8 +132,8 @@ function CategoryFormModal({ category, defaultType, onSave, onClose, saving, err
                       key={e}
                       type="button"
                       onClick={() => { setIcon(e); setShowPicker(false); }}
-                      className={`w-9 h-9 text-xl rounded-lg transition-colors hover:bg-indigo-100 flex items-center justify-center ${
-                        icon === e ? "bg-indigo-100 ring-2 ring-indigo-400" : ""
+                      className={`w-9 h-9 text-xl rounded-lg transition-colors hover:bg-sage-100 flex items-center justify-center ${
+                        icon === e ? "bg-sage-100 ring-2 ring-sage-400" : ""
                       }`}
                     >
                       {e}
@@ -169,7 +170,7 @@ function CategoryFormModal({ category, defaultType, onSave, onClose, saving, err
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Se salvează..." : category ? "Salvează" : "Adaugă"}
             </button>
@@ -230,9 +231,6 @@ function CategoryTable({ title, categories, color, onAdd, onEdit, onDelete, dele
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-2.5">
                 Categorie
               </th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-2.5">
-                Tip
-              </th>
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-2.5">
                 Acțiuni
               </th>
@@ -247,11 +245,6 @@ function CategoryTable({ title, categories, color, onAdd, onEdit, onDelete, dele
                     <span className="text-sm font-medium text-gray-900">{cat.name}</span>
                   </div>
                 </td>
-                <td className="px-6 py-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${accent.badge}`}>
-                    {cat.is_system_category ? "sistem" : "personalizat"}
-                  </span>
-                </td>
                 <td className="px-6 py-3 text-right">
                   {cat.is_system_category ? (
                     <span className="text-xs text-gray-300 italic">protejat</span>
@@ -259,7 +252,7 @@ function CategoryTable({ title, categories, color, onAdd, onEdit, onDelete, dele
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => onEdit(cat)}
-                        className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-lg transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-sage-600 hover:text-sage-700 border border-sage-200 hover:border-sage-300 rounded-lg transition-colors"
                       >
                         Editează
                       </button>
@@ -345,6 +338,7 @@ export default function CategoriesPage() {
 
   // ── Șterge ────────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Ești sigur că vrei să ștergi această categorie?")) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/categories?id=${id}`, { method: "DELETE" });
@@ -382,23 +376,23 @@ export default function CategoriesPage() {
   const expenseCategories = categories.filter((c) => c.type === "expense");
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       {/* Navbar */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-gray-900">💰 Vibe Budget</span>
+            <Link href="/" className="text-lg font-bold text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
             <div className="flex items-center gap-4">
               <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Dashboard</Link>
               <Link href="/dashboard/banks" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Bănci</Link>
-              <span className="text-sm font-medium text-indigo-600">Categorii</span>
-              <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Tranzacții</span>
+              <span className="text-sm font-medium text-sage-600">Categorii</span>
+              <Link href="/dashboard/currencies" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Valute</Link>
+              <Link href="/dashboard/transactions" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Tranzacții</Link>
+              <Link href="/dashboard/upload" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Import</Link>
               <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Rapoarte</span>
             </div>
           </div>
-          <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            ← Înapoi
-          </Link>
+          <UserMenu />
         </div>
       </nav>
 

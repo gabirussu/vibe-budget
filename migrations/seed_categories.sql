@@ -3,22 +3,22 @@
 -- =====================================================
 --
 -- SCOP:
--- Acest script populează cele 12 categorii standard pentru utilizator.
--- Categoriile trebuie să existe pentru ca auto-categorizarea să funcționeze.
+-- Acest script populează cele 12 categorii standard pentru un utilizator.
+-- Categoriile de sistem nu pot fi șterse din UI.
 --
 -- RULARE:
--- Execută în Supabase SQL Editor sau prin supabase db execute
+-- Execută în Supabase SQL Editor
+-- Înlocuiește EMAIL_UTILIZATOR cu emailul contului tău
 -- =====================================================
 
--- IMPORTANT: Înlocuiește USER_EMAIL cu emailul tău real
 DO $$
 DECLARE
     v_user_id TEXT;
 BEGIN
-    -- Obținem ID-ul utilizatorului pe baza emailului (ca TEXT pentru compatibilitate)
+    -- Obținem ID-ul utilizatorului pe baza emailului
     SELECT id::TEXT INTO v_user_id
     FROM users
-    WHERE email = 'danmitrut@gmail.com'; -- SCHIMBĂ CU EMAILUL TĂU
+    WHERE email = 'EMAIL_UTILIZATOR'; -- SCHIMBĂ CU EMAILUL TĂU
 
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Utilizatorul cu emailul specificat nu a fost găsit!';
@@ -26,144 +26,29 @@ BEGIN
 
     RAISE NOTICE 'User ID găsit: %', v_user_id;
 
-    -- Ștergem categoriile existente pentru a evita duplicate
-    DELETE FROM categories WHERE user_id = v_user_id::TEXT;
-    RAISE NOTICE 'Categorii vechi șterse';
+    -- Ștergem categoriile de sistem existente pentru a evita duplicate
+    DELETE FROM categories WHERE user_id = v_user_id AND is_system_category = true;
+    RAISE NOTICE 'Categorii de sistem vechi șterse';
 
-    -- Inserăm cele 12 categorii standard CU CULORI DISTINCTIVE
-    INSERT INTO categories (user_id, name, icon, description, color, created_at, updated_at)
+    -- ── CHELTUIELI ──────────────────────────────────────────────────────────────
+
+    INSERT INTO categories (id, user_id, name, type, icon, color, description, is_system_category, created_at, updated_at)
     VALUES
-        -- 1. Transport (Albastru)
-        (
-            v_user_id,
-            'Transport',
-            '🚗',
-            'Transport în comun sau cheltuieli cu mijlocul personal de transport (benzină, service auto, taxi, Uber)',
-            '#3b82f6',
-            NOW(),
-            NOW()
-        ),
+        (gen_random_uuid()::text, v_user_id, 'Transport',       'expense', '🚗', '#3b82f6', 'Transport în comun, benzină, service auto, taxi, Uber',                       true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Cumpărături',     'expense', '🛍️', '#22c55e', 'Supermarket, cumpărături online, haine, electronice',                         true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Locuință',        'expense', '🏠', '#f97316', 'Utilități, chirie, rate imobiliare, renovări',                                true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Sănătate',        'expense', '🏥', '#ef4444', 'Medicamente, consultații, investigații medicale',                              true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Divertisment',    'expense', '🍽️', '#ec4899', 'Restaurante, cafenele, cinema, ieșiri în oraș',                               true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Subscripții',     'expense', '📺', '#8b5cf6', 'Abonamente streaming, software, servicii cloud, fitness',                     true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Educație',        'expense', '📚', '#6366f1', 'Cărți, cursuri online, training-uri, școală',                                 true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Taxe și Impozite','expense', '🧾', '#6b7280', 'Taxe, impozite, amenzi, penalități',                                           true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Cash',            'expense', '💵', '#f59e0b', 'Retrageri de numerar de la ATM',                                               true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Transfer Intern', 'expense', '🔄', '#06b6d4', 'Transferuri între propriile conturi (nu afectează bugetul total)',             true, NOW(), NOW()),
 
-        -- 2. Cumpărături (Verde)
-        (
-            v_user_id,
-            'Cumpărături',
-            '🛍️',
-            'Tot ce ține de market, supermarket și cumpărături online (haine, electronice, mobilă)',
-            '#22c55e',
-            NOW(),
-            NOW()
-        ),
+    -- ── VENITURI ────────────────────────────────────────────────────────────────
 
-        -- 3. Locuință (Portocaliu)
-        (
-            v_user_id,
-            'Locuință',
-            '🏠',
-            'Cheltuieli de utilități, chirii, rate imobiliare, renovări, mobilări',
-            '#f97316',
-            NOW(),
-            NOW()
-        ),
-
-        -- 4. Sănătate (Roșu)
-        (
-            v_user_id,
-            'Sănătate',
-            '🏥',
-            'Medicamente, investigații, consultații, intervenții medicale',
-            '#ef4444',
-            NOW(),
-            NOW()
-        ),
-
-        -- 5. Divertisment (Roz)
-        (
-            v_user_id,
-            'Divertisment',
-            '🍽️',
-            'Restaurante, cafenele, baruri, cinema, evenimente, ieșiri în oraș',
-            '#ec4899',
-            NOW(),
-            NOW()
-        ),
-
-        -- 6. Subscripții (Violet)
-        (
-            v_user_id,
-            'Subscripții',
-            '📺',
-            'Abonamente pentru streaming, software, servicii cloud, fitness',
-            '#8b5cf6',
-            NOW(),
-            NOW()
-        ),
-
-        -- 7. Educație (Indigo)
-        (
-            v_user_id,
-            'Educație',
-            '📚',
-            'Școală, universitate, cărți, cursuri online, training-uri',
-            '#6366f1',
-            NOW(),
-            NOW()
-        ),
-
-        -- 8. Venituri (Emerald)
-        (
-            v_user_id,
-            'Venituri',
-            '💰',
-            'Salarii, freelance, dividende, bonusuri, venituri din diverse surse',
-            '#10b981',
-            NOW(),
-            NOW()
-        ),
-
-        -- 9. Transfer Intern (Cyan)
-        (
-            v_user_id,
-            'Transfer Intern',
-            '🔄',
-            'Transferuri între propriile conturi (nu afectează bugetul total)',
-            '#06b6d4',
-            NOW(),
-            NOW()
-        ),
-
-        -- 10. Transferuri (Teal)
-        (
-            v_user_id,
-            'Transferuri',
-            '💸',
-            'Transferuri către/de la prieteni, familie sau servicii de transfer',
-            '#14b8a6',
-            NOW(),
-            NOW()
-        ),
-
-        -- 11. Taxe și Impozite (Gri)
-        (
-            v_user_id,
-            'Taxe și Impozite',
-            '🧾',
-            'Taxe, impozite, amenzi, penalități',
-            '#6b7280',
-            NOW(),
-            NOW()
-        ),
-
-        -- 12. Cash (Amber)
-        (
-            v_user_id,
-            'Cash',
-            '💵',
-            'Retrageri de numerar de la ATM',
-            '#f59e0b',
-            NOW(),
-            NOW()
-        );
+        (gen_random_uuid()::text, v_user_id, 'Venituri',        'income',  '💰', '#10b981', 'Salarii, freelance, dividende, bonusuri',                                     true, NOW(), NOW()),
+        (gen_random_uuid()::text, v_user_id, 'Transferuri',     'income',  '💸', '#14b8a6', 'Transferuri primite de la prieteni, familie sau servicii de transfer',        true, NOW(), NOW());
 
     RAISE NOTICE '✅ 12 categorii standard create cu succes!';
 
@@ -171,10 +56,11 @@ END $$;
 
 -- Verificare finală
 SELECT
-    c.name as "Categorie",
-    c.icon as "Icon",
-    u.email as "Utilizator"
+    c.name       AS "Categorie",
+    c.type       AS "Tip",
+    c.icon       AS "Icon",
+    c.is_system_category AS "Sistem"
 FROM categories c
-JOIN users u ON c.user_id = u.id
-WHERE u.email = 'danmitrut@gmail.com'
-ORDER BY c.name;
+JOIN users u ON c.user_id = u.id::text
+WHERE u.email = 'EMAIL_UTILIZATOR'
+ORDER BY c.type DESC, c.name;

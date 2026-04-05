@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import UserMenu from "@/app/dashboard/user-menu";
 
 // ─── Tipuri ──────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ function BankFormModal({ bank, onSave, onClose, saving, error }: BankFormModalPr
               value={name}
               onChange={(e) => { setName(e.target.value); setNameError(null); }}
               placeholder="ex: ING Bank, Revolut, BCR..."
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400 ${
                 nameError ? "border-red-400 bg-red-50" : "border-gray-300"
               }`}
               autoFocus
@@ -164,7 +165,7 @@ function BankFormModal({ bank, onSave, onClose, saving, error }: BankFormModalPr
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Se salvează..." : bank ? "Salvează" : "Adaugă"}
             </button>
@@ -237,6 +238,7 @@ export default function BanksPage() {
 
   // ── Șterge ───────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Ești sigur că vrei să ștergi această bancă?")) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/banks?id=${id}`, { method: "DELETE" });
@@ -271,28 +273,25 @@ export default function BanksPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       {/* Navbar */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-gray-900">💰 Vibe Budget</span>
+            <Link href="/" className="text-lg font-bold text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
             <div className="flex items-center gap-4">
               <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
                 Dashboard
               </Link>
-              <span className="text-sm font-medium text-indigo-600">Bănci</span>
+              <span className="text-sm font-medium text-sage-600">Bănci</span>
               <Link href="/dashboard/categories" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Categorii</Link>
-              <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Tranzacții</span>
+              <Link href="/dashboard/currencies" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Valute</Link>
+              <Link href="/dashboard/transactions" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Tranzacții</Link>
+              <Link href="/dashboard/upload" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Import</Link>
               <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Rapoarte</span>
             </div>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            ← Înapoi
-          </Link>
+          <UserMenu />
         </div>
       </nav>
 
@@ -308,7 +307,7 @@ export default function BanksPage() {
           </div>
           <button
             onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
             + Adaugă bancă
           </button>
@@ -338,7 +337,7 @@ export default function BanksPage() {
             </p>
             <button
               onClick={openAdd}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors"
             >
               + Adaugă prima bancă
             </button>
@@ -353,9 +352,6 @@ export default function BanksPage() {
                 <tr>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">
                     Bancă
-                  </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">
-                    Culoare
                   </th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">
                     Adăugată
@@ -381,17 +377,6 @@ export default function BanksPage() {
                       </div>
                     </td>
 
-                    {/* Culoare */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full border border-gray-200"
-                          style={{ backgroundColor: bank.color }}
-                        />
-                        <span className="text-xs text-gray-400 font-mono">{bank.color}</span>
-                      </div>
-                    </td>
-
                     {/* Data */}
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-500">
@@ -408,7 +393,7 @@ export default function BanksPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEdit(bank)}
-                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-lg transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium text-sage-600 hover:text-sage-700 border border-sage-200 hover:border-sage-300 rounded-lg transition-colors"
                         >
                           Editează
                         </button>

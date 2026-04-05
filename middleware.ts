@@ -48,10 +48,24 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isProtectedPath && !user) {
-    // User ne-autentificat încearcă să acceseze o rută protejată
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
+  }
+
+  // Verifică trial pentru utilizatori autentificați pe rute protejate
+  if (isProtectedPath && user && request.nextUrl.pathname !== '/trial-expired') {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('trial_ends_at')
+      .eq('id', user.id)
+      .single();
+
+    if (userData?.trial_ends_at && new Date(userData.trial_ends_at) < new Date()) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/trial-expired';
+      return NextResponse.redirect(url);
+    }
   }
 
   // User autentificat încearcă să acceseze /login sau /register

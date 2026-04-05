@@ -8,158 +8,254 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import LogoutButton from "./logout-button";
+import UserMenu from "./user-menu";
 
-// Formatează o sumă ca monedă (ex: 1.234,56 RON)
 function formatCurrency(amount: number, currency: string = "RON"): string {
   return `${amount.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
 }
 
 export default async function DashboardPage() {
-  // 1. Verificăm sesiunea Supabase
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
+  if (!authUser) redirect("/login");
 
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  // 2. Preluăm datele userului din public.users
   const { data: userData } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!userData) {
-    redirect("/login");
-  }
+    .from("users").select("*").eq("id", authUser.id).single();
+  if (!userData) redirect("/login");
 
   const user = userData;
-
-  // 3. Calculăm intervalul lunii curente (format YYYY-MM-DD)
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const firstDayOfMonth = `${year}-${month}-01`;
-  const lastDayOfMonth = `${year}-${month}-31`;
+  const lastDayOfMonth  = new Date(year, now.getMonth() + 1, 0).toISOString().split("T")[0];
 
-  // 4. Query 1: Total bani (toate tranzacțiile)
   const { data: allTransactions } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("user_id", authUser.id);
+    .from("transactions").select("amount").eq("user_id", authUser.id);
+  const totalBalance = (allTransactions ?? []).reduce((s, t) => s + Number(t.amount), 0);
 
-  const totalBalance = (allTransactions ?? []).reduce(
-    (sum, t) => sum + Number(t.amount),
-    0
-  );
-
-  // 5. Query 2: Venituri luna curentă (amount > 0)
   const { data: incomeTransactions } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("user_id", authUser.id)
-    .gt("amount", 0)
-    .gte("date", firstDayOfMonth)
-    .lte("date", lastDayOfMonth);
+    .from("transactions").select("amount").eq("user_id", authUser.id)
+    .gt("amount", 0).gte("date", firstDayOfMonth).lte("date", lastDayOfMonth);
+  const incomeThisMonth = (incomeTransactions ?? []).reduce((s, t) => s + Number(t.amount), 0);
 
-  const incomeThisMonth = (incomeTransactions ?? []).reduce(
-    (sum, t) => sum + Number(t.amount),
-    0
-  );
-
-  // 6. Query 3: Cheltuieli luna curentă (amount < 0)
   const { data: expenseTransactions } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("user_id", authUser.id)
-    .lt("amount", 0)
-    .gte("date", firstDayOfMonth)
-    .lte("date", lastDayOfMonth);
-
+    .from("transactions").select("amount").eq("user_id", authUser.id)
+    .lt("amount", 0).gte("date", firstDayOfMonth).lte("date", lastDayOfMonth);
   const expensesThisMonth = Math.abs(
-    (expenseTransactions ?? []).reduce((sum, t) => sum + Number(t.amount), 0)
+    (expenseTransactions ?? []).reduce((s, t) => s + Number(t.amount), 0)
   );
 
-  // 7. Numele lunii curente în română
-  const monthNames = [
-    "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
-    "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie",
-  ];
+  const { data: recentTransactions } = await supabase
+    .from("transactions")
+    .select("id, date, description, amount, currency, banks(name, color), categories(name, icon)")
+    .eq("user_id", authUser.id)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const monthNames = ["ianuarie","februarie","martie","aprilie","mai","iunie",
+    "iulie","august","septembrie","octombrie","noiembrie","decembrie"];
   const currentMonthName = monthNames[now.getMonth()];
 
+  const navLinks = [
+    { href: "/dashboard/banks",        label: "Bănci" },
+    { href: "/dashboard/categories",   label: "Categorii" },
+    { href: "/dashboard/currencies",   label: "Valute" },
+    { href: "/dashboard/transactions", label: "Tranzacții" },
+    { href: "/dashboard/upload",       label: "Import" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       {/* Navbar */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
+      <nav className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-gray-900">💰 Vibe Budget</span>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-teal-600">Dashboard</span>
-              <Link href="/dashboard/banks" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Bănci</Link>
-              <Link href="/dashboard/categories" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Categorii</Link>
-              <Link href="/dashboard/currencies" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Valute</Link>
-              <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Tranzacții</span>
-              <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Rapoarte</span>
+            <Link href="/" className="text-lg font-bold text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
+            <div className="flex items-center gap-1">
+              <span className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg">
+                Dashboard
+              </span>
+              {navLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <span className="px-3 py-1.5 text-sm text-gray-300 cursor-not-allowed">Rapoarte</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{user.name as string}</span>
-            <LogoutButton />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-semibold text-indigo-600">
+              {(user.name as string).charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm text-gray-600 hidden md:block">{user.name as string}</span>
+            <UserMenu />
           </div>
         </div>
       </nav>
 
-      {/* Conținut */}
       <main className="container mx-auto px-4 py-8">
-        {/* Salut */}
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Bună ziua, {user.name as string}! 👋
+          <h1 className="text-3xl font-bold text-gray-900">
+            Bună, {(user.name as string).split(" ")[0]}! 👋
           </h1>
-          <p className="text-gray-600 mt-1">
-            Iată rezumatul tău financiar pentru {currentMonthName} {year}.
+          <p className="text-gray-500 mt-1">
+            Rezumatul tău financiar pentru <span className="font-medium text-gray-700">{currentMonthName} {year}</span>
           </p>
         </div>
 
-        {/* Carduri rezumat */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total bani */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 mb-1">Total bani</p>
-            <p className={`text-2xl font-bold ${totalBalance >= 0 ? "text-gray-900" : "text-red-600"}`}>
-              {formatCurrency(totalBalance, user.native_currency as string)}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">Toate tranzacțiile</p>
+        {/* Carduri rezumat financiar */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* Total */}
+          <div className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden hover:shadow-indigo-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-full -translate-y-8 translate-x-8 opacity-60" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-sm">💼</div>
+                <p className="text-sm font-medium text-gray-500">Total bani</p>
+              </div>
+              <p className={`text-2xl font-bold ${totalBalance >= 0 ? "text-gray-900" : "text-red-600"}`}>
+                {formatCurrency(totalBalance, (user.native_currency ?? user.nativeCurrency ?? "RON") as string)}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Toate tranzacțiile</p>
+            </div>
           </div>
 
-          {/* Venituri luna asta */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 mb-1">Venituri</p>
-            <p className="text-2xl font-bold text-green-600">
-              +{formatCurrency(incomeThisMonth, user.native_currency as string)}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">{currentMonthName} {year}</p>
+          {/* Venituri */}
+          <div className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden hover:shadow-green-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-full -translate-y-8 translate-x-8 opacity-60" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-sm">📈</div>
+                <p className="text-sm font-medium text-gray-500">Venituri</p>
+              </div>
+              <p className="text-2xl font-bold text-green-600">
+                +{formatCurrency(incomeThisMonth, user.native_currency as string)}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{currentMonthName} {year}</p>
+            </div>
           </div>
 
-          {/* Cheltuieli luna asta */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 mb-1">Cheltuieli</p>
-            <p className="text-2xl font-bold text-red-600">
-              -{formatCurrency(expensesThisMonth, user.native_currency as string)}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">{currentMonthName} {year}</p>
+          {/* Cheltuieli */}
+          <div className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden hover:shadow-red-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-full -translate-y-8 translate-x-8 opacity-60" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-sm">📉</div>
+                <p className="text-sm font-medium text-gray-500">Cheltuieli</p>
+              </div>
+              <p className="text-2xl font-bold text-red-500">
+                -{formatCurrency(expensesThisMonth, user.native_currency as string)}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{currentMonthName} {year}</p>
+            </div>
           </div>
         </div>
 
-        {/* Placeholder tranzacții */}
-        <div className="mt-8 bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Tranzacții recente</h2>
-          <p className="text-gray-500 text-sm">
-            Nu ai adăugat tranzacții încă. Vom construi această secțiune în următoarea lecție.
-          </p>
+        {/* Navigație rapidă */}
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Navigare rapidă</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+          {[
+            { href: "/dashboard/banks",        emoji: "🏦", label: "Bănci",           desc: "Gestionează conturile tale" },
+            { href: "/dashboard/categories",   emoji: "🗂️", label: "Categorii",       desc: "Venituri și cheltuieli" },
+            { href: "/dashboard/currencies",   emoji: "💱", label: "Valute",           desc: "RON, EUR, USD și altele" },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:shadow-indigo-100 hover:border-indigo-200 hover:-translate-y-0.5 hover:scale-[1.02] transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center text-xl transition-colors flex-shrink-0">
+                {item.emoji}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+              </div>
+              <span className="ml-auto text-gray-300 group-hover:text-indigo-400 transition-colors text-lg">→</span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+          {[
+            { href: "/dashboard/transactions", emoji: "💳", label: "Tranzacții",      desc: "Vezi și adaugă tranzacții", color: "teal" },
+            { href: "/dashboard/upload",       emoji: "📂", label: "Import CSV/Excel", desc: "Importă extras bancar",     color: "teal" },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:shadow-teal-100 hover:border-sage-200 hover:-translate-y-0.5 hover:scale-[1.02] transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-sage-50 group-hover:bg-sage-100 flex items-center justify-center text-xl transition-colors flex-shrink-0">
+                {item.emoji}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+              </div>
+              <span className="ml-auto text-gray-300 group-hover:text-teal-400 transition-colors text-lg">→</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Tranzacții recente */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h2 className="text-base font-semibold text-gray-900">Tranzacții recente</h2>
+            <Link href="/dashboard/transactions" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+              Vezi toate →
+            </Link>
+          </div>
+
+          {(!recentTransactions || recentTransactions.length === 0) ? (
+            <div className="text-center py-10">
+              <p className="text-3xl mb-2">💳</p>
+              <p className="text-sm text-gray-500 font-medium">Nicio tranzacție recentă</p>
+              <Link
+                href="/dashboard/transactions"
+                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                + Adaugă tranzacție
+              </Link>
+            </div>
+          ) : (
+            <table className="w-full">
+              <tbody className="divide-y divide-gray-50">
+                {recentTransactions.map((t) => {
+                  const bank = t.banks as { name: string; color: string } | null;
+                  const cat  = t.categories as { name: string; icon: string } | null;
+                  return (
+                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{cat?.icon ?? "💳"}</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{t.description}</p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(t.date).toLocaleDateString("ro-RO", { day: "numeric", month: "short" })}
+                              {bank && <span> · <span style={{ color: bank.color }}>●</span> {bank.name}</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                        <span className={`text-sm font-semibold ${Number(t.amount) >= 0 ? "text-green-600" : "text-red-500"}`}>
+                          {Number(t.amount) >= 0 ? "+" : ""}{Number(t.amount).toLocaleString("ro-RO", { minimumFractionDigits: 2 })} {t.currency}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
     </div>

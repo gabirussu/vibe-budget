@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import UserMenu from "@/app/dashboard/user-menu";
 
 // ─── Tipuri ───────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,7 @@ export default function CurrenciesPage() {
 
   // ── Șterge ────────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Ești sigur că vrei să ștergi această valută?")) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/currencies?id=${id}`, { method: "DELETE" });
@@ -136,24 +138,23 @@ export default function CurrenciesPage() {
   const existingCodes = currencies.map((c) => c.code);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       {/* Navbar */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-gray-900">💰 Vibe Budget</span>
+            <Link href="/" className="text-lg font-bold text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
             <div className="flex items-center gap-4">
               <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Dashboard</Link>
               <Link href="/dashboard/banks" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Bănci</Link>
               <Link href="/dashboard/categories" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Categorii</Link>
-              <span className="text-sm font-medium text-indigo-600">Valute</span>
-              <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Tranzacții</span>
+              <span className="text-sm font-medium text-sage-600">Valute</span>
+              <Link href="/dashboard/transactions" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Tranzacții</Link>
+              <Link href="/dashboard/upload" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Import</Link>
               <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Rapoarte</span>
             </div>
           </div>
-          <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            ← Înapoi
-          </Link>
+          <UserMenu />
         </div>
       </nav>
 
@@ -188,7 +189,7 @@ export default function CurrenciesPage() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
                     exists
                       ? "bg-gray-100 text-gray-400 border-gray-200 cursor-default"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-sage-400 hover:text-sage-600 hover:bg-sage-50"
                   }`}
                 >
                   <span className="font-mono font-bold text-xs">{preset.code}</span>
@@ -214,7 +215,7 @@ export default function CurrenciesPage() {
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="CHF"
                 maxLength={5}
-                className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 font-mono uppercase"
+                className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400 font-mono uppercase"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -225,7 +226,7 @@ export default function CurrenciesPage() {
                 onChange={(e) => setSymbol(e.target.value)}
                 placeholder="Fr"
                 maxLength={5}
-                className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
               />
             </div>
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
@@ -235,13 +236,13 @@ export default function CurrenciesPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Franc elvețian"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
               />
             </div>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               {saving ? "..." : "+ Adaugă"}
             </button>

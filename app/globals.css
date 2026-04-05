@@ -13,6 +13,18 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
+  /* Culoare sage — gri-verzui */
+  --color-sage-50:  #f2f6f4;
+  --color-sage-100: #deeae4;
+  --color-sage-200: #bdd4c9;
+  --color-sage-300: #93b8a8;
+  --color-sage-400: #6a9886;
+  --color-sage-500: #5c7a6b;
+  --color-sage-600: #4a6357;
+  --color-sage-700: #3d5248;
+  --color-sage-800: #33443b;
+  --color-sage-900: #2c3a32;
+
   /* Override gray text colors */
   --color-gray-500: #1f2937;
   --color-gray-600: #1f2937;
