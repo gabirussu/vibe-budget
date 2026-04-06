@@ -134,13 +134,22 @@ export default function SettingsPage() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-sage w-full py-2.5 bg-sage-600 text-white font-semibold rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            >
-              {loading ? "Se salvează..." : "Schimbă parola"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setError(null); setSuccess(false); }}
+                className="btn-white flex-1 py-2.5 border border-gray-300 text-gray-600 font-semibold rounded-lg text-sm"
+              >
+                Anulează
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-sage flex-1 py-2.5 bg-sage-600 text-white font-semibold rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {loading ? "Se salvează..." : "Schimbă parola"}
+              </button>
+            </div>
           </form>
         </div>
       </main>
