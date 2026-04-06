@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import LogoutButton from "./logout-button";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -13,12 +14,15 @@ export default async function Home() {
         <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
         <div className="flex items-center gap-3">
           {user ? (
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 text-sm font-semibold bg-sage-500 hover:bg-sage-600 active:scale-95 text-white rounded-lg transition-all shadow-sm shadow-sage-200"
-            >
-              Mergi la dashboard →
-            </Link>
+            <>
+              <LogoutButton />
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 text-sm font-semibold bg-sage-500 hover:bg-sage-600 active:scale-95 text-white rounded-lg transition-all shadow-sm shadow-sage-200"
+              >
+                Mergi la dashboard →
+              </Link>
+            </>
           ) : (
             <>
           <Link
