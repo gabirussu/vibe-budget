@@ -19,6 +19,7 @@ const NAV_LINKS = [
   { href: "/dashboard/currencies",   label: "Valute" },
   { href: "/dashboard/transactions", label: "Tranzacții" },
   { href: "/dashboard/upload",       label: "Import" },
+  { href: "/dashboard/settings",     label: "Setări" },
 ];
 
 export default function DashboardNav() {
