@@ -9,7 +9,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import UserMenu from "@/app/dashboard/user-menu";
+import DashboardNav from "@/app/dashboard/dashboard-nav";
 
 const BANKS = [
   { value: "bt",         label: "BT — Banca Transilvania", emoji: "🔵" },
@@ -49,23 +49,7 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       {/* Navbar */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-lg font-bold text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Dashboard</Link>
-              <Link href="/dashboard/banks" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Bănci</Link>
-              <Link href="/dashboard/categories" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Categorii</Link>
-              <Link href="/dashboard/currencies" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Valute</Link>
-              <Link href="/dashboard/transactions" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">Tranzacții</Link>
-              <span className="text-sm font-medium text-sage-600">Import</span>
-              <span className="text-sm text-gray-400 cursor-not-allowed opacity-50">Rapoarte</span>
-            </div>
-          </div>
-          <UserMenu />
-        </div>
-      </nav>
+      <DashboardNav />
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         {/* Header */}

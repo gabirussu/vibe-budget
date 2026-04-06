@@ -40,7 +40,7 @@ export default async function Home() {
 
       {/* Hero */}
       <section className="container mx-auto px-6 pt-20 pb-24 text-center max-w-3xl">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sage-50 border border-sage-100 text-sage-600 text-xs font-medium mb-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sage-100 to-sage-50 border border-sage-200 text-sage-700 text-base font-semibold italic mb-8 shadow-sm shadow-sage-100 hover:shadow-md hover:shadow-sage-200 hover:-translate-y-0.5 transition-all tracking-wide" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
           ✨ Simplu. Inteligent. Al tău.
         </div>
         <h1 className="text-5xl font-bold leading-tight mb-6 text-gray-900">
@@ -69,8 +69,8 @@ export default async function Home() {
 
       {/* Features */}
       <section className="container mx-auto px-6 pb-24 max-w-5xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
+        {/* Rândul 1 — 3 carduri */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="text-3xl mb-4">🏦</div>
             <h3 className="font-semibold text-gray-900 mb-2">Multi-bancă</h3>
@@ -94,7 +94,10 @@ export default async function Home() {
               Organizează tranzacțiile pe categorii — Mâncare, Transport, Locuință — și vezi exact unde cheltuiești.
             </p>
           </div>
+        </div>
 
+        {/* Rândul 2 — 2 carduri centrate */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:w-2/3 lg:mx-auto">
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="text-3xl mb-4">💱</div>
             <h3 className="font-semibold text-gray-900 mb-2">Multi-valută</h3>
@@ -110,7 +113,6 @@ export default async function Home() {
               Importă extrasele bancare în format CSV sau Excel direct din aplicația băncii tale.
             </p>
           </div>
-
         </div>
       </section>
 

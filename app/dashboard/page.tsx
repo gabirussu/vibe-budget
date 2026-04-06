@@ -8,7 +8,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import UserMenu from "./user-menu";
+import DashboardNav from "./dashboard-nav";
 
 function formatCurrency(amount: number, currency: string = "RON"): string {
   return `${amount.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
@@ -58,51 +58,15 @@ export default async function DashboardPage() {
     "iulie","august","septembrie","octombrie","noiembrie","decembrie"];
   const currentMonthName = monthNames[now.getMonth()];
 
-  const navLinks = [
-    { href: "/dashboard/banks",        label: "Bănci" },
-    { href: "/dashboard/categories",   label: "Categorii" },
-    { href: "/dashboard/currencies",   label: "Valute" },
-    { href: "/dashboard/transactions", label: "Tranzacții" },
-    { href: "/dashboard/upload",       label: "Import" },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       {/* Navbar */}
-      <nav className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-lg font-bold text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
-            <div className="flex items-center gap-1">
-              <span className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg">
-                Dashboard
-              </span>
-              {navLinks.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-                >
-                  {l.label}
-                </Link>
-              ))}
-              <span className="px-3 py-1.5 text-sm text-gray-300 cursor-not-allowed">Rapoarte</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-semibold text-indigo-600">
-              {(user.name as string).charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm text-gray-600 hidden md:block">{user.name as string}</span>
-            <UserMenu />
-          </div>
-        </div>
-      </nav>
+      <DashboardNav />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Bună, {(user.name as string).split(" ")[0]}! 👋
           </h1>
           <p className="text-gray-500 mt-1">
@@ -233,19 +197,19 @@ export default async function DashboardPage() {
                   const cat  = t.categories as { name: string; icon: string } | null;
                   return (
                     <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{cat?.icon ?? "💳"}</span>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{t.description}</p>
+                      <td className="px-4 sm:px-6 py-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <span className="text-base sm:text-lg flex-shrink-0">{cat?.icon ?? "💳"}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{t.description}</p>
                             <p className="text-xs text-gray-400">
                               {new Date(t.date).toLocaleDateString("ro-RO", { day: "numeric", month: "short" })}
-                              {bank && <span> · <span style={{ color: bank.color }}>●</span> {bank.name}</span>}
+                              {bank && <span className="hidden sm:inline"> · <span style={{ color: bank.color }}>●</span> {bank.name}</span>}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                      <td className="px-4 sm:px-6 py-3 text-right whitespace-nowrap">
                         <span className={`text-sm font-semibold ${Number(t.amount) >= 0 ? "text-green-600" : "text-red-500"}`}>
                           {Number(t.amount) >= 0 ? "+" : ""}{Number(t.amount).toLocaleString("ro-RO", { minimumFractionDigits: 2 })} {t.currency}
                         </span>
