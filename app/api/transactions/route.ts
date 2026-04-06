@@ -128,6 +128,57 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ─── PUT /api/transactions ────────────────────────────────────────────────────
+export async function PUT(request: NextRequest) {
+  try {
+    const { db, userId } = await getAuthUser();
+    if (!db || !userId) {
+      return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { id, date, description, amount, currency, bank_id, category_id } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "ID tranzacție lipsă" }, { status: 400 });
+    }
+    if (!date || typeof date !== "string") {
+      return NextResponse.json({ error: "Data tranzacției este obligatorie" }, { status: 400 });
+    }
+    if (!description || typeof description !== "string" || description.trim().length < 1) {
+      return NextResponse.json({ error: "Descrierea este obligatorie" }, { status: 400 });
+    }
+    if (amount === undefined || amount === null || isNaN(Number(amount))) {
+      return NextResponse.json({ error: "Suma este obligatorie" }, { status: 400 });
+    }
+
+    const { data, error } = await db
+      .from("transactions")
+      .update({
+        date,
+        description: description.trim(),
+        amount: Number(amount),
+        currency: currency || "RON",
+        bank_id: bank_id || null,
+        category_id: category_id || null,
+      })
+      .eq("id", id)
+      .eq("user_id", userId)
+      .select(`*, banks ( id, name, color ), categories ( id, name, icon, type )`)
+      .single();
+
+    if (error) {
+      console.error("[TRANSACTIONS PUT] Supabase error:", error);
+      return NextResponse.json({ error: "Eroare la editarea tranzacției" }, { status: 500 });
+    }
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error("[TRANSACTIONS PUT] Error:", error);
+    return NextResponse.json({ error: "Eroare internă" }, { status: 500 });
+  }
+}
+
 // ─── DELETE /api/transactions ─────────────────────────────────────────────────
 export async function DELETE(request: NextRequest) {
   try {

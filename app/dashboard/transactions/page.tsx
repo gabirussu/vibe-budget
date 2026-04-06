@@ -4,7 +4,7 @@
  * PAGINA TRANZACȚII - /dashboard/transactions
  *
  * Tabel cu toate tranzacțiile, filtre și căutare.
- * Buton Adaugă tranzacție → modal cu formular.
+ * Funcționalități: adăugare, editare, ștergere, paginare, valute dinamice.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -26,6 +26,12 @@ interface Category {
   type: "income" | "expense";
 }
 
+interface Currency {
+  id: string;
+  code: string;
+  name: string;
+}
+
 interface Transaction {
   id: string;
   date: string;
@@ -36,6 +42,16 @@ interface Transaction {
   category_id: string | null;
   banks: Bank | null;
   categories: Category | null;
+}
+
+interface TransactionFormData {
+  date: string;
+  description: string;
+  amount: string;
+  currency: string;
+  type: "income" | "expense";
+  bank_id: string;
+  category_id: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -49,47 +65,50 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ro-RO", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// ─── Modal adăugare tranzacție ────────────────────────────────────────────────
+const PAGE_SIZE = 20;
 
-interface AddTransactionModalProps {
+// ─── Modal formular (adăugare + editare) ──────────────────────────────────────
+
+interface TransactionModalProps {
+  mode: "add" | "edit";
+  transaction?: Transaction;
   banks: Bank[];
   categories: Category[];
+  currencies: Currency[];
   onSave: (data: TransactionFormData) => Promise<void>;
   onClose: () => void;
   saving: boolean;
   error: string | null;
 }
 
-interface TransactionFormData {
-  date: string;
-  description: string;
-  amount: string;
-  currency: string;
-  type: "income" | "expense";
-  bank_id: string;
-  category_id: string;
-}
-
-function AddTransactionModal({ banks, categories, onSave, onClose, saving, error }: AddTransactionModalProps) {
+function TransactionModal({ mode, transaction, banks, categories, currencies, onSave, onClose, saving, error }: TransactionModalProps) {
   const today = new Date().toISOString().split("T")[0];
+
+  const getInitialType = (): "income" | "expense" => {
+    if (transaction) return Number(transaction.amount) >= 0 ? "income" : "expense";
+    return "expense";
+  };
+
   const [form, setForm] = useState<TransactionFormData>({
-    date: today,
-    description: "",
-    amount: "",
-    currency: "RON",
-    type: "expense",
-    bank_id: "",
-    category_id: "",
+    date: transaction?.date ?? today,
+    description: transaction?.description ?? "",
+    amount: transaction ? String(Math.abs(Number(transaction.amount))) : "",
+    currency: transaction?.currency ?? (currencies[0]?.code || "RON"),
+    type: getInitialType(),
+    bank_id: transaction?.bank_id ?? "",
+    category_id: transaction?.category_id ?? "",
   });
   const [errors, setErrors] = useState<Partial<TransactionFormData>>({});
 
   const filteredCategories = categories.filter((c) => c.type === form.type);
 
   const set = (field: keyof TransactionFormData, value: string) => {
-    setForm((f) => ({ ...f, [field]: value }));
+    if (field === "type") {
+      setForm((f) => ({ ...f, type: value as "income" | "expense", category_id: "" }));
+    } else {
+      setForm((f) => ({ ...f, [field]: value }));
+    }
     setErrors((e) => ({ ...e, [field]: "" }));
-    // Reset category când schimbi tipul
-    if (field === "type") setForm((f) => ({ ...f, type: value as "income" | "expense", category_id: "" }));
   };
 
   const validate = (): boolean => {
@@ -104,17 +123,18 @@ function AddTransactionModal({ banks, categories, onSave, onClose, saving, error
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    // Suma negativă pentru cheltuieli
     const finalAmount = form.type === "expense" ? -Math.abs(Number(form.amount)) : Math.abs(Number(form.amount));
     await onSave({ ...form, amount: String(finalAmount) });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900">Adaugă tranzacție</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {mode === "add" ? "Adaugă tranzacție" : "Editează tranzacție"}
+          </h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">✕</button>
         </div>
 
@@ -166,10 +186,10 @@ function AddTransactionModal({ banks, categories, onSave, onClose, saving, error
                   onChange={(e) => set("currency", e.target.value)}
                   className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none"
                 >
-                  <option>RON</option>
-                  <option>EUR</option>
-                  <option>USD</option>
-                  <option>GBP</option>
+                  {currencies.length > 0
+                    ? currencies.map((c) => <option key={c.id} value={c.code}>{c.code}</option>)
+                    : ["RON", "EUR", "USD", "GBP"].map((c) => <option key={c} value={c}>{c}</option>)
+                  }
                 </select>
               </div>
               {errors.amount && <p className="text-red-500 text-xs mt-0.5">{errors.amount}</p>}
@@ -199,9 +219,7 @@ function AddTransactionModal({ banks, categories, onSave, onClose, saving, error
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
               >
                 <option value="">— nicio bancă —</option>
-                {banks.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
+                {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
             <div>
@@ -212,9 +230,7 @@ function AddTransactionModal({ banks, categories, onSave, onClose, saving, error
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
               >
                 <option value="">— nicio categorie —</option>
-                {filteredCategories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                ))}
+                {filteredCategories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </div>
           </div>
@@ -227,8 +243,8 @@ function AddTransactionModal({ banks, categories, onSave, onClose, saving, error
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
               Anulează
             </button>
-            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
-              {saving ? "Se salvează..." : "Adaugă"}
+            <button type="submit" disabled={saving} className="btn-sage flex-1 px-4 py-2 bg-sage-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              {saving ? "Se salvează..." : mode === "add" ? "Adaugă" : "Salvează"}
             </button>
           </div>
         </form>
@@ -243,6 +259,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -253,11 +270,24 @@ export default function TransactionsPage() {
   const [filterBank, setFilterBank] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
 
-  // Helper normalizare diacritice pentru căutare
+  // Paginare
+  const [page, setPage] = useState(1);
+
+  // Modal
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Ștergere
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Normalizare diacritice
   const normalize = (str: string) =>
     str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-  // Tranzacții filtrate pe client după search (descriere + categorie + bancă)
+  // Tranzacții filtrate pe client după search
   const filteredTransactions = search
     ? transactions.filter((t) =>
         normalize(t.description).includes(normalize(search)) ||
@@ -266,32 +296,32 @@ export default function TransactionsPage() {
       )
     : transactions;
 
-  // Modal
-  const [modalOpen, setModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  // Paginare
+  const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE);
+  const paginatedTransactions = filteredTransactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Ștergere
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Reset pagină la schimbarea filtrelor
+  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, filterBank, filterCategory]);
 
-  // ── Fetch bănci + categorii ───────────────────────────────────────────────────
+  // ── Fetch bănci + categorii + valute ─────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       fetch("/api/banks").then((r) => r.json()),
       fetch("/api/categories").then((r) => r.json()),
-    ]).then(([banksJson, catsJson]) => {
+      fetch("/api/currencies").then((r) => r.json()),
+    ]).then(([banksJson, catsJson, currJson]) => {
       setBanks(banksJson.data ?? []);
       setCategories(catsJson.data ?? []);
+      setCurrencies(currJson.data ?? []);
     });
   }, []);
 
-  // ── Fetch tranzacții cu filtre ────────────────────────────────────────────────
+  // ── Fetch tranzacții ──────────────────────────────────────────────────────────
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      // search se face pe client (pentru suport diacritice)
       if (dateFrom)       params.set("date_from", dateFrom);
       if (dateTo)         params.set("date_to", dateTo);
       if (filterBank)     params.set("bank_id", filterBank);
@@ -306,7 +336,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, dateFrom, dateTo, filterBank, filterCategory]);
+  }, [dateFrom, dateTo, filterBank, filterCategory]);
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
@@ -315,10 +345,12 @@ export default function TransactionsPage() {
     setSaving(true);
     setFormError(null);
     try {
+      const isEdit = modalMode === "edit" && editingTransaction;
       const res = await fetch("/api/transactions", {
-        method: "POST",
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(isEdit ? { id: editingTransaction.id } : {}),
           date: data.date,
           description: data.description,
           amount: data.amount,
@@ -330,6 +362,7 @@ export default function TransactionsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Eroare la salvare");
       setModalOpen(false);
+      setEditingTransaction(null);
       await fetchTransactions();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Eroare necunoscută");
@@ -354,6 +387,20 @@ export default function TransactionsPage() {
     }
   };
 
+  const openAdd = () => {
+    setModalMode("add");
+    setEditingTransaction(null);
+    setFormError(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (t: Transaction) => {
+    setModalMode("edit");
+    setEditingTransaction(t);
+    setFormError(null);
+    setModalOpen(true);
+  };
+
   const totalVenituri = filteredTransactions.filter((t) => t.amount > 0).reduce((s, t) => s + Number(t.amount), 0);
   const totalCheltuieli = Math.abs(filteredTransactions.filter((t) => t.amount < 0).reduce((s, t) => s + Number(t.amount), 0));
 
@@ -370,17 +417,16 @@ export default function TransactionsPage() {
             <p className="text-gray-500 text-sm mt-1">Toate tranzacțiile tale într-un singur loc.</p>
           </div>
           <button
-            onClick={() => { setModalOpen(true); setFormError(null); }}
-            className="flex items-center gap-2 px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+            onClick={openAdd}
+            className="btn-sage flex items-center gap-2 px-4 py-2 bg-sage-600 text-white rounded-lg text-sm font-medium shadow-sm"
           >
             + Adaugă tranzacție
           </button>
         </div>
 
         {/* Filtre */}
-        <div className="bg-white shadow rounded-lg p-4 mb-4">
+        <div className="bg-white shadow-sm rounded-xl border border-gray-100 p-4 mb-4">
           <div className="flex flex-wrap gap-3">
-            {/* Căutare */}
             <div className="flex-1 min-w-[200px]">
               <input
                 type="text"
@@ -390,8 +436,6 @@ export default function TransactionsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
               />
             </div>
-
-            {/* Date range */}
             <input
               type="date"
               value={dateFrom}
@@ -406,8 +450,6 @@ export default function TransactionsPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
               title="Până la data"
             />
-
-            {/* Filtru bancă */}
             <select
               value={filterBank}
               onChange={(e) => setFilterBank(e.target.value)}
@@ -416,8 +458,6 @@ export default function TransactionsPage() {
               <option value="">Toate băncile</option>
               {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
-
-            {/* Filtru categorie */}
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
@@ -426,8 +466,6 @@ export default function TransactionsPage() {
               <option value="">Toate categoriile</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
             </select>
-
-            {/* Reset filtre */}
             {(search || dateFrom || dateTo || filterBank || filterCategory) && (
               <button
                 onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setFilterBank(""); setFilterCategory(""); }}
@@ -439,9 +477,9 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Sumar filtre curente */}
+        {/* Sumar */}
         {filteredTransactions.length > 0 && (
-          <div className="flex gap-4 mb-4 text-sm">
+          <div className="flex flex-wrap gap-4 mb-4 text-sm">
             <span className="text-gray-500">{filteredTransactions.length} tranzacții</span>
             <span className="text-green-600 font-medium">+{totalVenituri.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} venituri</span>
             <span className="text-red-500 font-medium">-{totalCheltuieli.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} cheltuieli</span>
@@ -454,7 +492,7 @@ export default function TransactionsPage() {
         )}
 
         {/* Tabel */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow-sm rounded-xl border border-gray-100 overflow-hidden">
           {loading && (
             <div className="px-6 py-12 text-center text-gray-400 text-sm">Se încarcă tranzacțiile...</div>
           )}
@@ -469,10 +507,7 @@ export default function TransactionsPage() {
                   : "Adaugă prima ta tranzacție."}
               </p>
               {!search && !dateFrom && !dateTo && !filterBank && !filterCategory && (
-                <button
-                  onClick={() => setModalOpen(true)}
-                  className="px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm font-medium transition-colors"
-                >
+                <button onClick={openAdd} className="btn-sage px-4 py-2 bg-sage-600 text-white rounded-lg text-sm font-medium">
                   + Adaugă tranzacție
                 </button>
               )}
@@ -480,89 +515,147 @@ export default function TransactionsPage() {
           )}
 
           {!loading && filteredTransactions.length > 0 && (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Data</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Descriere</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Bancă</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Categorie</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Sumă</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredTransactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Data */}
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      <span className="text-sm text-gray-600">{formatDate(t.date)}</span>
-                    </td>
+            <>
+              {/* Tabel desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Data</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Descriere</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Bancă</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Categorie</th>
+                      <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Sumă</th>
+                      <th className="px-6 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {paginatedTransactions.map((t) => (
+                      <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-3 whitespace-nowrap">
+                          <span className="text-sm text-gray-600">{formatDate(t.date)}</span>
+                        </td>
+                        <td className="px-6 py-3 max-w-[240px]">
+                          <span className="text-sm text-gray-900 truncate block">{t.description}</span>
+                        </td>
+                        <td className="px-6 py-3">
+                          {t.banks ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.banks.color }} />
+                              <span className="text-sm text-gray-600">{t.banks.name}</span>
+                            </div>
+                          ) : <span className="text-xs text-gray-300">—</span>}
+                        </td>
+                        <td className="px-6 py-3">
+                          {t.categories ? (
+                            <span className="inline-flex items-center gap-1 text-sm text-gray-600">
+                              <span>{t.categories.icon}</span>
+                              <span>{t.categories.name}</span>
+                            </span>
+                          ) : <span className="text-xs text-gray-300">—</span>}
+                        </td>
+                        <td className="px-6 py-3 text-right whitespace-nowrap">
+                          <span className={`text-sm font-semibold ${Number(t.amount) >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            {formatAmount(Number(t.amount), t.currency)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openEdit(t)}
+                              className="px-3 py-1.5 text-xs font-medium text-indigo-500 hover:text-indigo-700 border border-indigo-100 hover:border-indigo-300 rounded-lg transition-colors"
+                            >
+                              Editează
+                            </button>
+                            <button
+                              onClick={() => handleDelete(t.id)}
+                              disabled={deletingId === t.id}
+                              className="px-3 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 border border-red-100 hover:border-red-300 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {deletingId === t.id ? "..." : "Șterge"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                    {/* Descriere */}
-                    <td className="px-6 py-3 max-w-[240px]">
-                      <span className="text-sm text-gray-900 truncate block">{t.description}</span>
-                    </td>
-
-                    {/* Bancă */}
-                    <td className="px-6 py-3">
-                      {t.banks ? (
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: t.banks.color }}
-                          />
-                          <span className="text-sm text-gray-600">{t.banks.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Categorie */}
-                    <td className="px-6 py-3">
-                      {t.categories ? (
-                        <span className="inline-flex items-center gap-1 text-sm text-gray-600">
-                          <span>{t.categories.icon}</span>
-                          <span>{t.categories.name}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Sumă */}
-                    <td className="px-6 py-3 text-right whitespace-nowrap">
+              {/* Listă mobilă */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {paginatedTransactions.map((t) => (
+                  <div key={t.id} className="px-4 py-3 flex items-center gap-3">
+                    <span className="text-xl flex-shrink-0">{t.categories?.icon ?? "💳"}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{t.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {formatDate(t.date)}
+                        {t.banks && <span> · <span style={{ color: t.banks.color }}>●</span> {t.banks.name}</span>}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className={`text-sm font-semibold ${Number(t.amount) >= 0 ? "text-green-600" : "text-red-500"}`}>
                         {formatAmount(Number(t.amount), t.currency)}
                       </span>
-                    </td>
-
-                    {/* Șterge */}
-                    <td className="px-6 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        disabled={deletingId === t.id}
-                        className="px-3 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 border border-red-100 hover:border-red-300 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {deletingId === t.id ? "..." : "Șterge"}
-                      </button>
-                    </td>
-                  </tr>
+                      <div className="flex gap-1">
+                        <button onClick={() => openEdit(t)} className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors">
+                          Editează
+                        </button>
+                        <span className="text-gray-300">·</span>
+                        <button
+                          onClick={() => handleDelete(t.id)}
+                          disabled={deletingId === t.id}
+                          className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === t.id ? "..." : "Șterge"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Paginare */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100">
+                  <span className="text-xs text-gray-400">
+                    {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredTransactions.length)} din {filteredTransactions.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Anterior
+                    </button>
+                    <span className="px-3 py-1.5 text-xs text-gray-500">{page} / {totalPages}</span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Următor →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
 
       {/* Modal */}
       {modalOpen && (
-        <AddTransactionModal
+        <TransactionModal
+          mode={modalMode}
+          transaction={editingTransaction ?? undefined}
           banks={banks}
           categories={categories}
+          currencies={currencies}
           onSave={handleSave}
-          onClose={() => setModalOpen(false)}
+          onClose={() => { setModalOpen(false); setEditingTransaction(null); }}
           saving={saving}
           error={formError}
         />
