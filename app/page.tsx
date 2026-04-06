@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "./logout-button";
+import HeroButtons from "./hero-buttons";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -56,18 +57,7 @@ export default async function Home() {
           Adaugi băncile tale, încarci extrasele și în câteva secunde ai o imagine clară a finanțelor tale personale.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Link
-            href="/register"
-            className="btn-sage px-6 py-3 bg-sage-500 active:scale-95 text-white font-semibold rounded-xl shadow-md shadow-sage-200"
-          >
-            Începe perioada de probă →
-          </Link>
-          <Link
-            href="/login"
-            className="btn-white px-6 py-3 bg-white text-gray-600 font-medium rounded-xl border border-gray-200"
-          >
-            Am deja cont
-          </Link>
+          <HeroButtons />
         </div>
       </section>
 

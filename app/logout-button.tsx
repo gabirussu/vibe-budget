@@ -15,7 +15,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="btn-white px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg"
+      className="btn-logout px-4 py-2 text-sm font-medium text-red-400 border border-red-200 rounded-lg"
     >
       Deloghează-te
     </button>

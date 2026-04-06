@@ -92,6 +92,75 @@ p, span, div {
 .btn-white:hover::before { transform: translateX(0); }
 .btn-white:hover { color: #ffffff !important; border-color: var(--color-sage-500); }
 
+/* ─── Hero buttons swap ──────────────────────────────────────────────────────
+   Când hover pe cel alb (secondary), cel verde (primary) devine alb.
+   Când hover pe cel verde (primary), el devine alb normal (btn-sage).
+*/
+
+.hero-btn-primary {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-sage-500);
+  transition: color 0.35s ease, background 0.35s ease;
+  z-index: 0;
+}
+.hero-btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  transform: translateX(-100%);
+  transition: transform 0.35s ease;
+  z-index: -1;
+}
+/* Hover direct pe butonul verde */
+.hero-btn-primary:hover::before { transform: translateX(0); }
+.hero-btn-primary:hover { color: var(--color-sage-600) !important; }
+
+/* Când hover e pe butonul alb (secondary), verdele devine alb prin group */
+.group\/hero:has(.hero-btn-secondary:hover) .hero-btn-primary {
+  color: var(--color-sage-600) !important;
+  background: #ffffff;
+}
+
+.hero-btn-secondary {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  transition: color 0.35s ease;
+  z-index: 0;
+}
+.hero-btn-secondary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-sage-500);
+  transform: translateX(-100%);
+  transition: transform 0.35s ease;
+  z-index: -1;
+}
+.hero-btn-secondary:hover::before { transform: translateX(0); }
+.hero-btn-secondary:hover { color: #ffffff !important; border-color: var(--color-sage-500); }
+
+/* Buton logout → fill roșu la hover */
+.btn-logout {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.35s ease;
+  z-index: 0;
+}
+.btn-logout::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ef4444;
+  transform: translateX(-100%);
+  transition: transform 0.35s ease;
+  z-index: -1;
+}
+.btn-logout:hover::before { transform: translateX(0); }
+.btn-logout:hover { color: #ffffff !important; border-color: #ef4444; }
+
 /* Buton indigo → devine alb la hover */
 .btn-indigo {
   position: relative;
