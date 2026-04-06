@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-sage-600 hover:bg-sage-700 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="btn-sage w-full py-2.5 bg-sage-600 text-white font-semibold rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {loading ? "Se salvează..." : "Salvează parola nouă"}
             </button>

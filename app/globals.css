@@ -52,6 +52,65 @@ p, span, div {
   color: #171717;
 }
 
+/* ─── Fill-from-left button effects ─────────────────────────────────────────── */
+
+/* Buton verde (sage) → devine alb la hover */
+.btn-sage {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.35s ease;
+  z-index: 0;
+}
+.btn-sage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  transform: translateX(-100%);
+  transition: transform 0.35s ease;
+  z-index: -1;
+}
+.btn-sage:hover::before { transform: translateX(0); }
+.btn-sage:hover { color: var(--color-sage-600) !important; border-color: var(--color-sage-300); }
+
+/* Buton alb → devine verde (sage) la hover */
+.btn-white {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.35s ease;
+  z-index: 0;
+}
+.btn-white::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-sage-500);
+  transform: translateX(-100%);
+  transition: transform 0.35s ease;
+  z-index: -1;
+}
+.btn-white:hover::before { transform: translateX(0); }
+.btn-white:hover { color: #ffffff !important; border-color: var(--color-sage-500); }
+
+/* Buton indigo → devine alb la hover */
+.btn-indigo {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.35s ease;
+  z-index: 0;
+}
+.btn-indigo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  transform: translateX(-100%);
+  transition: transform 0.35s ease;
+  z-index: -1;
+}
+.btn-indigo:hover::before { transform: translateX(0); }
+.btn-indigo:hover { color: #4f46e5 !important; }
+
 /* Force rebuild for text color updates */
 
 /* Override all gray text colors to ensure readability */

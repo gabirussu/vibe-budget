@@ -18,7 +18,7 @@ export default async function Home() {
               <LogoutButton />
               <Link
                 href="/dashboard"
-                className="px-4 py-2 text-sm font-semibold bg-sage-500 hover:bg-sage-600 active:scale-95 text-white rounded-lg transition-all shadow-sm shadow-sage-200"
+                className="btn-sage px-4 py-2 text-sm font-semibold bg-sage-500 active:scale-95 text-white rounded-lg shadow-sm shadow-sage-200"
               >
                 Mergi la dashboard →
               </Link>
@@ -27,13 +27,13 @@ export default async function Home() {
             <>
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+            className="btn-white px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg"
           >
             Autentifică-te
           </Link>
           <Link
             href="/register"
-            className="px-4 py-2 text-sm font-semibold bg-sage-500 hover:bg-sage-600 active:scale-95 text-white rounded-lg transition-all shadow-sm shadow-sage-200"
+            className="btn-sage px-4 py-2 text-sm font-semibold bg-sage-500 active:scale-95 text-white rounded-lg shadow-sm shadow-sage-200"
           >
             Creează cont
           </Link>
@@ -58,13 +58,13 @@ export default async function Home() {
         <div className="flex items-center justify-center gap-4">
           <Link
             href="/register"
-            className="px-6 py-3 bg-gradient-to-r from-sage-500 to-sage-600 hover:from-sage-400 hover:to-sage-500 active:scale-95 text-white font-semibold rounded-xl transition-all shadow-md shadow-sage-200 hover:shadow-lg hover:shadow-sage-200 hover:-translate-y-0.5"
+            className="btn-sage px-6 py-3 bg-sage-500 active:scale-95 text-white font-semibold rounded-xl shadow-md shadow-sage-200"
           >
             Începe perioada de probă →
           </Link>
           <Link
             href="/login"
-            className="px-6 py-3 bg-white hover:bg-sage-50 text-gray-600 hover:text-sage-700 font-medium rounded-xl border border-gray-200 hover:border-sage-200 transition-all hover:-translate-y-0.5"
+            className="btn-white px-6 py-3 bg-white text-gray-600 font-medium rounded-xl border border-gray-200"
           >
             Am deja cont
           </Link>
@@ -129,7 +129,7 @@ export default async function Home() {
           </p>
           <Link
             href="/register"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-sage-500 to-sage-600 hover:from-sage-400 hover:to-sage-500 active:scale-95 text-white font-semibold rounded-xl transition-all shadow-md shadow-sage-200 hover:shadow-lg hover:shadow-sage-200 hover:-translate-y-0.5"
+            className="btn-sage inline-block px-6 py-3 bg-sage-500 active:scale-95 text-white font-semibold rounded-xl shadow-md shadow-sage-200"
           >
             Creează cont →
           </Link>

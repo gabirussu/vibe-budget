@@ -15,7 +15,7 @@ export default function UserMenu() {
   return (
     <button
       onClick={handleLogout}
-      className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 active:scale-95 text-indigo-700 text-sm font-medium rounded-lg transition-all"
+      className="btn-indigo px-4 py-2 bg-indigo-100 active:scale-95 text-indigo-700 text-sm font-medium rounded-lg"
     >
       Deconectează-te
     </button>

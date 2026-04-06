@@ -97,7 +97,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-sage-600 hover:bg-sage-700 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
+              className="btn-sage w-full py-2.5 bg-sage-600 text-white font-semibold rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
             >
               {loading ? "Se autentifică..." : "Autentifică-te"}
             </button>
