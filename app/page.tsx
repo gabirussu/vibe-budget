@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import LogoutButton from "./logout-button";
 import HeroButtons from "./hero-buttons";
+import NavButtons from "./nav-buttons";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -15,15 +15,7 @@ export default async function Home() {
         <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 hover:text-sage-600 transition-colors">💰 Vibe Budget</Link>
         <div className="flex items-center gap-3">
           {user ? (
-            <>
-              <LogoutButton />
-              <Link
-                href="/dashboard"
-                className="btn-sage px-4 py-2 text-sm font-semibold bg-sage-500 active:scale-95 text-white rounded-lg shadow-sm shadow-sage-200"
-              >
-                Mergi la dashboard →
-              </Link>
-            </>
+            <NavButtons />
           ) : (
             <>
           <Link
