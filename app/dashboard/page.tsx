@@ -193,8 +193,8 @@ export default async function DashboardPage() {
             <table className="w-full">
               <tbody className="divide-y divide-gray-50">
                 {recentTransactions.map((t) => {
-                  const bank = t.banks as { name: string; color: string } | null;
-                  const cat  = t.categories as { name: string; icon: string } | null;
+                  const bank = t.banks as unknown as { name: string; color: string } | null;
+                  const cat  = t.categories as unknown as { name: string; icon: string } | null;
                   return (
                     <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 sm:px-6 py-3">
