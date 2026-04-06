@@ -19,7 +19,6 @@ const NAV_LINKS = [
   { href: "/dashboard/currencies",   label: "Valute" },
   { href: "/dashboard/transactions", label: "Tranzacții" },
   { href: "/dashboard/upload",       label: "Import" },
-  { href: "/dashboard/settings",     label: "Setări" },
 ];
 
 export default function DashboardNav() {
@@ -59,9 +58,19 @@ export default function DashboardNav() {
           </span>
         </div>
 
-        {/* Dreapta: UserMenu + hamburger */}
+        {/* Dreapta: Setări cont + UserMenu + hamburger */}
         <div className="flex items-center gap-2">
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-2">
+            <Link
+              href="/dashboard/settings"
+              className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
+                isActive("/dashboard/settings")
+                  ? "font-medium text-indigo-600 bg-indigo-50"
+                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+            >
+              Setări cont
+            </Link>
             <UserMenu />
           </div>
 
@@ -106,7 +115,18 @@ export default function DashboardNav() {
           <span className="px-3 py-2.5 text-sm text-gray-300 cursor-not-allowed">
             Rapoarte
           </span>
-          <div className="mt-2 pt-2 border-t border-gray-100">
+          <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+            <Link
+              href="/dashboard/settings"
+              onClick={() => setMenuOpen(false)}
+              className={`px-3 py-2.5 text-sm rounded-lg transition-all ${
+                isActive("/dashboard/settings")
+                  ? "font-medium text-indigo-600 bg-indigo-50"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+            >
+              Setări cont
+            </Link>
             <UserMenu />
           </div>
         </div>
