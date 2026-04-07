@@ -4,36 +4,56 @@
  * PAGINA UPLOAD - /dashboard/upload
  *
  * Import tranzacții din CSV sau Excel.
- * Parsare cu lib/utils/file-parser.ts, preview înainte de import.
+ * Parsare cu lib/utils/file-parser.ts, preview + import la /api/import.
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import DashboardNav from "@/app/dashboard/dashboard-nav";
 import { parseCSV, parseExcel, ParsedTransaction } from "@/lib/utils/file-parser";
 
-const BANKS = [
-  { value: "bt",         label: "BT — Banca Transilvania", emoji: "🔵" },
-  { value: "ing",        label: "ING Bank",                emoji: "🟠" },
-  { value: "bcr",        label: "BCR",                     emoji: "🔴" },
-  { value: "revolut",    label: "Revolut",                  emoji: "⚫" },
-  { value: "raiffeisen", label: "Raiffeisen",               emoji: "🟡" },
-  { value: "other",      label: "Altă bancă",               emoji: "🏦" },
-];
+// ─── Tipuri ───────────────────────────────────────────────────────────────────
+
+interface Bank {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface ImportResult {
+  imported: number;
+  categorized: number;
+  message: string;
+}
+
+// ─── Pagina ───────────────────────────────────────────────────────────────────
 
 export default function UploadPage() {
   const [fileName, setFileName]         = useState<string>("");
   const [fileExt, setFileExt]           = useState<string>("");
-  const [file, setFile]                 = useState<File | null>(null);
   const [bank, setBank]                 = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [banks, setBanks]               = useState<Bank[]>([]);
 
-  // Stare parsare
+  // Parsare
   const [parsing, setParsing]           = useState(false);
   const [parseError, setParseError]     = useState<string | null>(null);
   const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
 
+  // Import
+  const [importing, setImporting]       = useState(false);
+  const [importError, setImportError]   = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectedBank = BANKS.find((b) => b.value === bank);
+  const selectedBank = banks.find((b) => b.id === bank);
+
+  // Fetch bănci din DB
+  useEffect(() => {
+    fetch("/api/banks")
+      .then((r) => r.json())
+      .then((json) => setBanks(json.data ?? []));
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -42,11 +62,11 @@ export default function UploadPage() {
     const ext = selected.name.split(".").pop()?.toLowerCase() ?? "";
     setFileName(selected.name);
     setFileExt(ext);
-    setFile(selected);
     setParseError(null);
     setTransactions([]);
+    setImportResult(null);
+    setImportError(null);
 
-    // Parsare automată la selectarea fișierului
     await parseFile(selected, ext);
   };
 
@@ -57,7 +77,6 @@ export default function UploadPage() {
 
     try {
       let result;
-
       if (ext === "csv") {
         result = await parseCSV(selected);
       } else if (ext === "xlsx" || ext === "xls") {
@@ -80,17 +99,94 @@ export default function UploadPage() {
     }
   };
 
+  const handleImport = async () => {
+    if (!transactions.length || !bank) return;
+
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+
+    try {
+      const payload = transactions.map((t) => ({
+        bankId: bank,
+        date: t.date,
+        description: t.description,
+        amount: Math.abs(t.amount),
+        currency: t.currency ?? "RON",
+        type: t.amount < 0 ? "expense" : "income",
+      }));
+
+      const res = await fetch("/api/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactions: payload }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Eroare la import");
+
+      setImportResult({
+        imported: json.imported,
+        categorized: json.categorized,
+        message: json.message,
+      });
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Eroare necunoscută");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleClear = () => {
     setFileName("");
     setFileExt("");
-    setFile(null);
     setParseError(null);
     setTransactions([]);
+    setImportResult(null);
+    setImportError(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const fileIcon = fileExt === "csv" ? "📊" : fileExt === "xlsx" || fileExt === "xls" ? "📗" : "📄";
 
+  // ─── Ecran succes ──────────────────────────────────────────────────────────
+  if (importResult) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
+        <DashboardNav />
+        <main className="container mx-auto px-4 py-8 max-w-3xl">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <p className="text-5xl mb-4">✅</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Import reușit!</h2>
+            <p className="text-gray-500 text-sm mb-1">
+              <span className="font-semibold text-gray-900">{importResult.imported} tranzacții</span> importate cu succes.
+            </p>
+            <p className="text-gray-400 text-sm mb-8">
+              {importResult.categorized > 0
+                ? `${importResult.categorized} categorizate automat.`
+                : "Nicio tranzacție categorizată automat."}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={handleClear}
+                className="btn-white px-5 py-2.5 border border-gray-300 text-gray-600 font-medium rounded-lg text-sm"
+              >
+                Încarcă alt fișier
+              </button>
+              <Link
+                href="/dashboard/transactions"
+                className="btn-sage px-5 py-2.5 bg-sage-600 text-white font-medium rounded-lg text-sm shadow-sm"
+              >
+                Vezi tranzacțiile →
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── Pagina principală ─────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sage-100/60 to-white">
       <DashboardNav />
@@ -108,7 +204,7 @@ export default function UploadPage() {
         <div className="bg-white shadow-sm rounded-xl border border-gray-100 p-6 mb-6">
           <div className="space-y-5">
 
-            {/* File input stilizat */}
+            {/* File input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Fișier (CSV sau Excel)
@@ -201,8 +297,11 @@ export default function UploadPage() {
                 <span className="flex items-center gap-2">
                   {selectedBank ? (
                     <>
-                      <span>{selectedBank.emoji}</span>
-                      <span className="text-gray-900 font-medium">{selectedBank.label}</span>
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: selectedBank.color }}
+                      />
+                      <span className="text-gray-900 font-medium">{selectedBank.name}</span>
                     </>
                   ) : (
                     <span className="text-gray-400">— selectează banca —</span>
@@ -213,20 +312,29 @@ export default function UploadPage() {
 
               {dropdownOpen && (
                 <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                  {BANKS.map((b) => (
-                    <button
-                      key={b.value}
-                      type="button"
-                      onClick={() => { setBank(b.value); setDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors hover:bg-sage-50 ${
-                        bank === b.value ? "bg-sage-50 text-sage-700 font-medium" : "text-gray-700"
-                      }`}
-                    >
-                      <span className="text-base">{b.emoji}</span>
-                      <span>{b.label}</span>
-                      {bank === b.value && <span className="ml-auto text-sage-500 text-xs">✓</span>}
-                    </button>
-                  ))}
+                  {banks.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                      Nicio bancă adăugată. <Link href="/dashboard/banks" className="text-sage-600 hover:underline">Adaugă una →</Link>
+                    </div>
+                  ) : (
+                    banks.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => { setBank(b.id); setDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors hover:bg-sage-50 ${
+                          bank === b.id ? "bg-sage-50 text-sage-700 font-medium" : "text-gray-700"
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: b.color }}
+                        />
+                        <span>{b.name}</span>
+                        {bank === b.id && <span className="ml-auto text-sage-500 text-xs">✓</span>}
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -300,22 +408,34 @@ export default function UploadPage() {
               </table>
 
               {/* Footer tabel */}
-              <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+              <div className="px-6 py-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-gray-500">
-                  <span className="font-medium">Total: {transactions.length} tranzacții</span> găsite în fișier
+                  <span className="font-medium text-gray-700">Total: {transactions.length} tranzacții</span> găsite în fișier
                   {transactions.length > 10 && (
                     <span className="text-gray-400"> — ...și încă {transactions.length - 10} tranzacții</span>
                   )}
                 </p>
-                <button
-                  type="button"
-                  disabled={!bank}
-                  onClick={() => {}}
-                  className="btn-sage px-4 py-2 bg-sage-600 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={!bank ? "Selectează banca înainte de import" : ""}
-                >
-                  ↑ Importă {transactions.length} tranzacții
-                </button>
+
+                <div className="flex items-center gap-3">
+                  {/* Eroare import */}
+                  {importError && (
+                    <p className="text-xs text-red-500">{importError}</p>
+                  )}
+
+                  {/* Hint bancă lipsă */}
+                  {!bank && (
+                    <p className="text-xs text-gray-400">Selectează banca pentru a importa</p>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={!bank || importing}
+                    onClick={handleImport}
+                    className="btn-sage px-4 py-2 bg-sage-600 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {importing ? "Se importă..." : `↑ Importă ${transactions.length} tranzacții`}
+                  </button>
+                </div>
               </div>
             </div>
           )}
