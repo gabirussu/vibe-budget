@@ -282,7 +282,7 @@ export default function UploadPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {transactions.slice(0, 50).map((t, i) => (
+                  {transactions.slice(0, 10).map((t, i) => (
                     <tr key={i} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">{t.date}</td>
                       <td className="px-6 py-3 max-w-[280px]">
@@ -298,13 +298,25 @@ export default function UploadPage() {
                   ))}
                 </tbody>
               </table>
-              {transactions.length > 50 && (
-                <div className="px-6 py-3 border-t border-gray-100 text-center">
-                  <p className="text-xs text-gray-400">
-                    Se afișează primele 50 din {transactions.length} tranzacții detectate.
-                  </p>
-                </div>
-              )}
+
+              {/* Footer tabel */}
+              <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  <span className="font-medium">Total: {transactions.length} tranzacții</span> găsite în fișier
+                  {transactions.length > 10 && (
+                    <span className="text-gray-400"> — ...și încă {transactions.length - 10} tranzacții</span>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  disabled={!bank}
+                  onClick={() => {}}
+                  className="btn-sage px-4 py-2 bg-sage-600 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={!bank ? "Selectează banca înainte de import" : ""}
+                >
+                  ↑ Importă {transactions.length} tranzacții
+                </button>
+              </div>
             </div>
           )}
         </div>
