@@ -255,8 +255,8 @@ export async function parsePDF(file: File): Promise<ParseResult> {
     // Import dinamic — pdfjs-dist e mare, îl încărcăm doar când e necesar
     const pdfjsLib = await import("pdfjs-dist");
 
-    // Worker necesar pentru pdfjs în browser
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    // Worker servit local din /public — evităm dependința de CDN extern
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
