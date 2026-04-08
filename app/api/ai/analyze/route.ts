@@ -67,15 +67,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: analysis });
 
   } catch (error) {
-    console.error("[AI ANALYZE] Error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[AI ANALYZE] Error:", message);
 
-    if (error instanceof Error && error.message.toLowerCase().includes("rate")) {
+    if (message.toLowerCase().includes("rate")) {
       return NextResponse.json(
         { error: "Prea multe cereri. Încearcă din nou în câteva momente." },
         { status: 429 }
       );
     }
 
-    return NextResponse.json({ error: "Eroare la analiza AI" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
