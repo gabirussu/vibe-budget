@@ -60,6 +60,7 @@ export default function UploadPage() {
     if (!selected) return;
 
     const ext = selected.name.split(".").pop()?.toLowerCase() ?? "";
+    console.log("[upload] File:", selected.name, "| ext:", ext, "| type:", selected.type);
     setFileName(selected.name);
     setFileExt(ext);
     setParseError(null);
