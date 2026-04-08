@@ -243,21 +243,188 @@ export async function parseExcel(file: File): Promise<ParseResult> {
 }
 
 /**
- * FUNCȚIA 3: Parse PDF - TEMPORAR DEZACTIVATĂ
+ * FUNCȚIA 3: Parse PDF extras Banca Transilvania
  *
- * PDF parsing este complex în environment serverless.
- *
- * ALTERNATIVE PENTRU UTILIZATORI:
- * 1. Convertiți PDF → CSV folosind https://www.ilovepdf.com/pdf_to_excel
- * 2. Majoritatea băncilor oferă export CSV direct din aplicație
- * 3. Folosiți Google Sheets pentru a deschide PDF și exporta ca CSV
+ * Parser specific pentru formatul BT:
+ * Coloane: Data | Descriere | Debit | Credit
+ * Date format: DD/MM/YYYY
+ * Rânduri ignorate: RULAJ ZI, SOLD FINAL ZI, SOLD ANTERIOR, RULAJ TOTAL CONT
  */
 export async function parsePDF(file: File): Promise<ParseResult> {
-  return {
-    success: false,
-    transactions: [],
-    error: 'PDF support este temporar indisponibil. Vă rugăm să convertești PDF-ul în CSV folosind https://www.ilovepdf.com/pdf_to_excel sau să descărcați extractul direct în format CSV de la bancă.',
-  };
+  try {
+    // Import dinamic — pdfjs-dist e mare, îl încărcăm doar când e necesar
+    const pdfjsLib = await import("pdfjs-dist");
+
+    // Worker necesar pentru pdfjs în browser
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    // Extragem textul din toate paginile
+    const allLines: string[] = [];
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      // Grupăm elementele text pe rânduri după coordonata Y
+      const itemsByY = new Map<number, string[]>();
+      for (const item of textContent.items) {
+        if (!("str" in item)) continue;
+        const y = Math.round((item as { transform: number[] }).transform[5]);
+        const existing = itemsByY.get(y) ?? [];
+        existing.push((item as { str: string }).str);
+        itemsByY.set(y, existing);
+      }
+
+      // Sortăm rândurile de sus în jos (Y descrescător în PDF)
+      const sortedRows = Array.from(itemsByY.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([, texts]) => texts.join(" ").trim());
+
+      allLines.push(...sortedRows);
+    }
+
+    return parseBTLines(allLines);
+  } catch (error) {
+    console.error("[parsePDF] Error:", error);
+    return {
+      success: false,
+      transactions: [],
+      error: "Eroare la citirea PDF-ului. Asigură-te că fișierul este un extras BT valid.",
+    };
+  }
+}
+
+/**
+ * Parser logic pentru liniile extrase din PDF-ul BT
+ */
+function parseBTLines(lines: string[]): ParseResult {
+  const transactions: ParsedTransaction[] = [];
+
+  // Rânduri de ignorat — rezumate zilnice și solduri
+  const SKIP_PATTERNS = [
+    /^RULAJ ZI/i,
+    /^SOLD FINAL ZI/i,
+    /^SOLD ANTERIOR/i,
+    /^RULAJ TOTAL CONT/i,
+    /^SOLD FINAL CONT/i,
+    /^TOTAL DISPONIBIL/i,
+    /^Fonduri proprii/i,
+    /^Credit neutilizat/i,
+    /^Data\s+Descriere/i,
+    /^BANCA TRANSILVANIA/i,
+    /^Info clienti/i,
+    /^Solicitant/i,
+    /^Tiparit/i,
+    /^\d+\s*\/\s*\d+$/,   // "1 / 7" — număr pagină
+    /^REF:/i,
+  ];
+
+  // Regex dată BT: DD/MM/YYYY
+  const DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+  // Regex sumă: număr cu virgulă opțională și 2 zecimale (ex: 1,240.00 sau 120.00)
+  const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // Skip linii goale sau de ignorat
+    if (!line || SKIP_PATTERNS.some((p) => p.test(line))) {
+      i++;
+      continue;
+    }
+
+    const dateMatch = line.match(DATE_RE);
+    if (!dateMatch) {
+      i++;
+      continue;
+    }
+
+    // Găsit o dată — colectăm liniile de descriere până la suma Debit/Credit
+    const [, day, month, year] = dateMatch;
+    const isoDate = `${year}-${month}-${day}`;
+
+    const descLines: string[] = [];
+    let debit: number | null = null;
+    let credit: number | null = null;
+    let j = i + 1;
+
+    while (j < lines.length) {
+      const nextLine = lines[j].trim();
+      if (!nextLine) { j++; continue; }
+
+      // Dacă găsim o nouă dată — stop
+      if (DATE_RE.test(nextLine)) break;
+
+      // Dacă e un pattern de skip — stop
+      if (SKIP_PATTERNS.some((p) => p.test(nextLine))) break;
+
+      // Verificăm dacă linia e o sumă
+      if (AMOUNT_RE.test(nextLine)) {
+        const val = parseFloat(nextLine.replace(/,/g, ""));
+        if (!isNaN(val) && val > 0) {
+          // Prima sumă = Debit, a doua = Credit (ordinea coloanelor BT)
+          if (debit === null) {
+            debit = val;
+          } else {
+            credit = val;
+          }
+        }
+        j++;
+        continue;
+      }
+
+      // Altfel e descriere
+      if (!SKIP_PATTERNS.some((p) => p.test(nextLine))) {
+        descLines.push(nextLine);
+      }
+      j++;
+    }
+
+    // Construim tranzacția dacă avem cel puțin o sumă
+    if (debit !== null || credit !== null) {
+      const description = descLines
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (description.length > 0) {
+        if (debit !== null && debit > 0) {
+          transactions.push({
+            date: isoDate,
+            description,
+            amount: -debit,   // Debit = cheltuială → negativ
+            currency: "RON",
+            type: "debit",
+          });
+        }
+        if (credit !== null && credit > 0) {
+          transactions.push({
+            date: isoDate,
+            description,
+            amount: credit,   // Credit = venit → pozitiv
+            currency: "RON",
+            type: "credit",
+          });
+        }
+      }
+    }
+
+    i = j;
+  }
+
+  if (transactions.length === 0) {
+    return {
+      success: false,
+      transactions: [],
+      error: "Nu s-au putut extrage tranzacții din PDF. Asigură-te că este un extras Banca Transilvania.",
+    };
+  }
+
+  return { success: true, transactions, rowCount: transactions.length };
 }
 
 /**

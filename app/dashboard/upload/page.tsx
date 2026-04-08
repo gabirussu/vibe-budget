@@ -10,7 +10,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import DashboardNav from "@/app/dashboard/dashboard-nav";
-import { parseCSV, parseExcel, ParsedTransaction } from "@/lib/utils/file-parser";
+import { parseCSV, parseExcel, parsePDF, ParsedTransaction } from "@/lib/utils/file-parser";
 
 // ─── Tipuri ───────────────────────────────────────────────────────────────────
 
@@ -81,8 +81,10 @@ export default function UploadPage() {
         result = await parseCSV(selected);
       } else if (ext === "xlsx" || ext === "xls") {
         result = await parseExcel(selected);
+      } else if (ext === "pdf") {
+        result = await parsePDF(selected);
       } else {
-        setParseError("Format neacceptat. Folosește CSV, XLSX sau XLS.");
+        setParseError("Format neacceptat. Folosește CSV, XLSX, XLS sau PDF (extras BT).");
         setParsing(false);
         return;
       }
@@ -147,7 +149,7 @@ export default function UploadPage() {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const fileIcon = fileExt === "csv" ? "📊" : fileExt === "xlsx" || fileExt === "xls" ? "📗" : "📄";
+  const fileIcon = fileExt === "csv" ? "📊" : fileExt === "xlsx" || fileExt === "xls" ? "📗" : fileExt === "pdf" ? "📕" : "📄";
 
   // ─── Ecran succes ──────────────────────────────────────────────────────────
   if (importResult) {
@@ -196,7 +198,7 @@ export default function UploadPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">📂 Import tranzacții</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Încarcă un extras bancar în format CSV sau Excel.
+            Încarcă un extras bancar în format CSV, Excel sau PDF (Banca Transilvania).
           </p>
         </div>
 
@@ -207,7 +209,7 @@ export default function UploadPage() {
             {/* File input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fișier (CSV sau Excel)
+                Fișier (CSV, Excel sau PDF extras BT)
               </label>
               <div
                 onClick={() => !parsing && inputRef.current?.click()}
@@ -236,7 +238,7 @@ export default function UploadPage() {
                   ) : (
                     <>
                       <p className="text-sm font-medium text-gray-700">Apasă să alegi fișierul</p>
-                      <p className="text-xs text-gray-400 mt-0.5">CSV, XLSX sau XLS acceptate</p>
+                      <p className="text-xs text-gray-400 mt-0.5">CSV, XLSX, XLS sau PDF (extras BT)</p>
                     </>
                   )}
                 </div>
@@ -253,7 +255,7 @@ export default function UploadPage() {
               <input
                 ref={inputRef}
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx,.xls,.pdf"
                 onChange={handleFileChange}
                 className="hidden"
               />
