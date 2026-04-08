@@ -287,6 +287,8 @@ export async function parsePDF(file: File): Promise<ParseResult> {
       allLines.push(...sortedRows);
     }
 
+    console.log("[parsePDF] Total lines extracted:", allLines.length);
+    console.log("[parsePDF] First 50 lines:", allLines.slice(0, 50));
     return parseBTLines(allLines);
   } catch (error) {
     console.error("[parsePDF] Error:", error);
