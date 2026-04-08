@@ -255,8 +255,10 @@ export async function parsePDF(file: File): Promise<ParseResult> {
     // Import dinamic — pdfjs-dist e mare, îl încărcăm doar când e necesar
     const pdfjsLib = await import("pdfjs-dist");
 
-    // Worker servit local din /public — evităm dependința de CDN extern
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+    // Importăm worker-ul direct ca URL (Next.js îl va bundle automat)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const workerUrl = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.toString();
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
