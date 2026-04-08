@@ -19,6 +19,7 @@ const NAV_LINKS = [
   { href: "/dashboard/currencies",   label: "Valute" },
   { href: "/dashboard/transactions", label: "Tranzacții" },
   { href: "/dashboard/upload",       label: "Import" },
+  { href: "/dashboard/reports",      label: "Rapoarte" },
 ];
 
 export default function DashboardNav() {
@@ -53,9 +54,6 @@ export default function DashboardNav() {
               {link.label}
             </Link>
           ))}
-          <span className="px-3 py-1.5 text-sm text-gray-300 cursor-not-allowed">
-            Rapoarte
-          </span>
         </div>
 
         {/* Dreapta: Setări cont + UserMenu + hamburger */}
@@ -112,9 +110,6 @@ export default function DashboardNav() {
               {link.label}
             </Link>
           ))}
-          <span className="px-3 py-2.5 text-sm text-gray-300 cursor-not-allowed">
-            Rapoarte
-          </span>
           <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
             <Link
               href="/dashboard/settings"
