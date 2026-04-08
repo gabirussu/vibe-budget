@@ -77,6 +77,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (message.toLowerCase().includes("credit") || message.toLowerCase().includes("billing")) {
+      return NextResponse.json(
+        { error: "Contul AI nu are credite suficiente. Adaugă credite la console.anthropic.com → Billing." },
+        { status: 402 }
+      );
+    }
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
