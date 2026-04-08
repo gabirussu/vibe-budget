@@ -348,22 +348,24 @@ function parseBTLines(lines: string[]): ParseResult {
     // Skip dacă blocul conține cuvinte cheie de rezumat
     if (SKIP_RE.test(block)) continue;
 
-    // Extragem toate sumele din bloc
-    const amounts: number[] = [];
+    // Extragem toate sumele din bloc — inclusiv 0.00 pentru a detecta coloana
+    // Format BT: <descriere> <debit_sau_0.00> <credit_sau_0.00>
+    // Ultimele 2 valori numerice din bloc sunt întotdeauna Debit și Credit
+    const allAmounts: number[] = [];
     AMOUNT_RE.lastIndex = 0;
     let am: RegExpExecArray | null;
     while ((am = AMOUNT_RE.exec(block)) !== null) {
-      const val = parseFloat(am[0].replace(/,/g, ""));
-      if (val > 0) amounts.push(val);
+      allAmounts.push(parseFloat(am[0].replace(/,/g, "")));
     }
 
-    if (amounts.length === 0) continue;
+    if (allAmounts.length === 0) continue;
 
-    // DEBUG: primele 10 blocuri cu sume
-    if (transactions.length < 10) {
-      console.log(`[parseBTLines] Block[${transactions.length}]:`, JSON.stringify(block));
-      console.log(`[parseBTLines] Amounts:`, amounts);
-    }
+    // Ultimele 2 valori = [debit, credit] (una dintre ele e 0.00)
+    const debitVal  = allAmounts.length >= 2 ? allAmounts[allAmounts.length - 2] : 0;
+    const creditVal = allAmounts.length >= 2 ? allAmounts[allAmounts.length - 1] : allAmounts[0];
+
+    // Dacă ambele sunt 0 sau egale (date duplicate) — skip
+    if (debitVal === 0 && creditVal === 0) continue;
 
     // Descrierea = textul din bloc fără dată și fără sume, curățat
     const description = block
@@ -374,35 +376,24 @@ function parseBTLines(lines: string[]): ParseResult {
 
     if (!description || description.length < 3) continue;
 
-    // Convenție BT: dacă sunt 2 sume → prima e debit, a doua credit
-    // Dacă e 1 sumă → verificăm contextul (debit dacă e POS/plată, credit dacă e încasare)
-    // Simplificat: prima sumă = debit (cheltuială), dacă există a doua = credit (venit)
-    if (amounts.length >= 2) {
-      // Debit
+    // Debit > 0 → cheltuială (negativ)
+    if (debitVal > 0) {
       transactions.push({
         date: isoDate,
         description,
-        amount: -amounts[0],
+        amount: -debitVal,
         currency: "RON",
         type: "debit",
       });
-      // Credit
+    }
+    // Credit > 0 → venit (pozitiv)
+    if (creditVal > 0) {
       transactions.push({
         date: isoDate,
         description,
-        amount: amounts[1],
+        amount: creditVal,
         currency: "RON",
         type: "credit",
-      });
-    } else {
-      // O singură sumă — debit sau credit în funcție de context
-      const isCredit = /incasar|credit|salar|transfer primit|depunere/i.test(description);
-      transactions.push({
-        date: isoDate,
-        description,
-        amount: isCredit ? amounts[0] : -amounts[0],
-        currency: "RON",
-        type: isCredit ? "credit" : "debit",
       });
     }
   }
