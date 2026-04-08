@@ -359,6 +359,12 @@ function parseBTLines(lines: string[]): ParseResult {
 
     if (amounts.length === 0) continue;
 
+    // DEBUG: primele 10 blocuri cu sume
+    if (transactions.length < 10) {
+      console.log(`[parseBTLines] Block[${transactions.length}]:`, JSON.stringify(block));
+      console.log(`[parseBTLines] Amounts:`, amounts);
+    }
+
     // Descrierea = textul din bloc fără dată și fără sume, curățat
     const description = block
       .replace(/\d{2}\/\d{2}\/\d{4}/g, "")           // scoate data
