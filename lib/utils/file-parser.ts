@@ -288,7 +288,7 @@ export async function parsePDF(file: File): Promise<ParseResult> {
     }
 
     console.log("[parsePDF] Total lines extracted:", allLines.length);
-    console.log("[parsePDF] First 50 lines:", allLines.slice(0, 50));
+    console.log("[parsePDF] First 50 lines:", JSON.stringify(allLines.slice(0, 50), null, 2));
     return parseBTLines(allLines);
   } catch (error) {
     console.error("[parsePDF] Error:", error);
@@ -301,124 +301,107 @@ export async function parsePDF(file: File): Promise<ParseResult> {
 }
 
 /**
- * Parser logic pentru liniile extrase din PDF-ul BT
+ * Parser logic pentru liniile extrase din PDF-ul BT.
+ *
+ * Format BT: textul din PDF vine cu mai multe elemente pe același "rând" Y.
+ * Fiecare intrare de tranzacție are forma:
+ *   <Descriere> <Sumă debit sau goală> <Sumă credit sau goală>
+ * precedată de o linie cu data DD/MM/YYYY.
+ *
+ * Strategia: unim toate liniile într-un singur text și folosim regex
+ * pentru a găsi blocurile data → sume.
  */
 function parseBTLines(lines: string[]): ParseResult {
   const transactions: ParsedTransaction[] = [];
 
-  // Rânduri de ignorat — rezumate zilnice și solduri
-  const SKIP_PATTERNS = [
-    /^RULAJ ZI/i,
-    /^SOLD FINAL ZI/i,
-    /^SOLD ANTERIOR/i,
-    /^RULAJ TOTAL CONT/i,
-    /^SOLD FINAL CONT/i,
-    /^TOTAL DISPONIBIL/i,
-    /^Fonduri proprii/i,
-    /^Credit neutilizat/i,
-    /^Data\s+Descriere/i,
-    /^BANCA TRANSILVANIA/i,
-    /^Info clienti/i,
-    /^Solicitant/i,
-    /^Tiparit/i,
-    /^\d+\s*\/\s*\d+$/,   // "1 / 7" — număr pagină
-    /^REF:/i,
-  ];
+  // Unim toate liniile într-un singur text pentru regex global
+  const fullText = lines.join("\n");
 
-  // Regex dată BT: DD/MM/YYYY
-  const DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  // Regex pentru o tranzacție BT:
+  // Data DD/MM/YYYY, urmat de descriere (orice text), urmat de 1-2 sume (NN.NN)
+  // Sumele apar la sfârșitul blocului, înainte de următoarea dată sau RULAJ ZI
+  const DATE_RE = /(\d{2})\/(\d{2})\/(\d{4})/g;
 
-  // Regex sumă: număr cu virgulă opțională și 2 zecimale (ex: 1,240.00 sau 120.00)
-  const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
-
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i].trim();
-
-    // Skip linii goale sau de ignorat
-    if (!line || SKIP_PATTERNS.some((p) => p.test(line))) {
-      i++;
-      continue;
-    }
-
-    const dateMatch = line.match(DATE_RE);
-    if (!dateMatch) {
-      i++;
-      continue;
-    }
-
-    // Găsit o dată — colectăm liniile de descriere până la suma Debit/Credit
-    const [, day, month, year] = dateMatch;
-    const isoDate = `${year}-${month}-${day}`;
-
-    const descLines: string[] = [];
-    let debit: number | null = null;
-    let credit: number | null = null;
-    let j = i + 1;
-
-    while (j < lines.length) {
-      const nextLine = lines[j].trim();
-      if (!nextLine) { j++; continue; }
-
-      // Dacă găsim o nouă dată — stop
-      if (DATE_RE.test(nextLine)) break;
-
-      // Dacă e un pattern de skip — stop
-      if (SKIP_PATTERNS.some((p) => p.test(nextLine))) break;
-
-      // Verificăm dacă linia e o sumă
-      if (AMOUNT_RE.test(nextLine)) {
-        const val = parseFloat(nextLine.replace(/,/g, ""));
-        if (!isNaN(val) && val > 0) {
-          // Prima sumă = Debit, a doua = Credit (ordinea coloanelor BT)
-          if (debit === null) {
-            debit = val;
-          } else {
-            credit = val;
-          }
-        }
-        j++;
-        continue;
-      }
-
-      // Altfel e descriere
-      if (!SKIP_PATTERNS.some((p) => p.test(nextLine))) {
-        descLines.push(nextLine);
-      }
-      j++;
-    }
-
-    // Construim tranzacția dacă avem cel puțin o sumă
-    if (debit !== null || credit !== null) {
-      const description = descLines
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (description.length > 0) {
-        if (debit !== null && debit > 0) {
-          transactions.push({
-            date: isoDate,
-            description,
-            amount: -debit,   // Debit = cheltuială → negativ
-            currency: "RON",
-            type: "debit",
-          });
-        }
-        if (credit !== null && credit > 0) {
-          transactions.push({
-            date: isoDate,
-            description,
-            amount: credit,   // Credit = venit → pozitiv
-            currency: "RON",
-            type: "credit",
-          });
-        }
-      }
-    }
-
-    i = j;
+  // Găsim toate pozițiile datelor în text
+  const dateMatches: Array<{ index: number; date: string }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = DATE_RE.exec(fullText)) !== null) {
+    const [, day, month, year] = m;
+    dateMatches.push({ index: m.index, date: `${year}-${month}-${day}` });
   }
+
+  console.log("[parseBTLines] Date matches found:", dateMatches.length);
+
+  // Regex sumă: număr opțional cu virgule ca separator mii, punct zecimal, 2 zecimale
+  const AMOUNT_RE = /\b(\d{1,3}(?:,\d{3})*|\d+)\.\d{2}\b/g;
+
+  // Skip patterns — texte care nu sunt tranzacții
+  const SKIP_RE = /RULAJ ZI|SOLD FINAL ZI|SOLD ANTERIOR|RULAJ TOTAL CONT|SOLD FINAL CONT|TOTAL DISPONIBIL|Fonduri proprii|Credit neutilizat|BANCA TRANSILVANIA|Info clienti|Solicitant|Tiparit|Data\s+Descriere/i;
+
+  for (let i = 0; i < dateMatches.length; i++) {
+    const { index: startIdx, date: isoDate } = dateMatches[i];
+    const endIdx = i + 1 < dateMatches.length ? dateMatches[i + 1].index : fullText.length;
+
+    // Blocul de text pentru această tranzacție
+    const block = fullText.slice(startIdx, endIdx).trim();
+
+    // Skip dacă blocul conține cuvinte cheie de rezumat
+    if (SKIP_RE.test(block)) continue;
+
+    // Extragem toate sumele din bloc
+    const amounts: number[] = [];
+    AMOUNT_RE.lastIndex = 0;
+    let am: RegExpExecArray | null;
+    while ((am = AMOUNT_RE.exec(block)) !== null) {
+      const val = parseFloat(am[0].replace(/,/g, ""));
+      if (val > 0) amounts.push(val);
+    }
+
+    if (amounts.length === 0) continue;
+
+    // Descrierea = textul din bloc fără dată și fără sume, curățat
+    const description = block
+      .replace(/\d{2}\/\d{2}\/\d{4}/g, "")           // scoate data
+      .replace(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g, "") // scoate sumele
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!description || description.length < 3) continue;
+
+    // Convenție BT: dacă sunt 2 sume → prima e debit, a doua credit
+    // Dacă e 1 sumă → verificăm contextul (debit dacă e POS/plată, credit dacă e încasare)
+    // Simplificat: prima sumă = debit (cheltuială), dacă există a doua = credit (venit)
+    if (amounts.length >= 2) {
+      // Debit
+      transactions.push({
+        date: isoDate,
+        description,
+        amount: -amounts[0],
+        currency: "RON",
+        type: "debit",
+      });
+      // Credit
+      transactions.push({
+        date: isoDate,
+        description,
+        amount: amounts[1],
+        currency: "RON",
+        type: "credit",
+      });
+    } else {
+      // O singură sumă — debit sau credit în funcție de context
+      const isCredit = /incasar|credit|salar|transfer primit|depunere/i.test(description);
+      transactions.push({
+        date: isoDate,
+        description,
+        amount: isCredit ? amounts[0] : -amounts[0],
+        currency: "RON",
+        type: isCredit ? "credit" : "debit",
+      });
+    }
+  }
+
+  console.log("[parseBTLines] Transactions extracted:", transactions.length);
 
   if (transactions.length === 0) {
     return {
